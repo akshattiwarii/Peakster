@@ -24,3 +24,28 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Make links in AI response stand out */
+.prose a {
+  color: #f97316 !important;
+  /* Orange-500 */
+  text-decoration: underline;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.prose a:hover {
+  color: #ea580c !important;
+  /* Orange-600 */
+  text-decoration: underline;
+}
+
+.dark .prose a {
+  color: #fb923c !important;
+  /* Orange-400 for dark mode */
+}
+
+.dark .prose a:hover {
+  color: #fdba74 !important;
+  /* Orange-300 */
+}
