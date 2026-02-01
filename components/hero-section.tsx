@@ -12,8 +12,11 @@ import { supabase } from "@/lib/supabase";
 export function HeroSection() {
     const [loading, setLoading] = useState(false);
     const [destination, setDestination] = useState("");
+    const [source, setSource] = useState("");
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [showSourceSuggestions, setShowSourceSuggestions] = useState(false);
     const [filteredCities, setFilteredCities] = useState<string[]>([]);
+    const [filteredSourceCities, setFilteredSourceCities] = useState<string[]>([]);
     const [days, setDays] = useState("");
     const [budget, setBudget] = useState("");
     const [travelers, setTravelers] = useState("Couple");
@@ -27,20 +30,14 @@ export function HeroSection() {
         const delayDebounceFn = setTimeout(async () => {
             if (destination.length > 2) {
                 try {
-                    // Using Photon API for better autocomplete and POI support
                     const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(destination)}&limit=10`);
                     if (!response.ok) throw new Error("Network response was not ok");
-
                     const data = await response.json();
-
-                    // Photon returns GeoJSON features
                     const formattedCities = data.features.map((feature: any) => {
                         const p = feature.properties;
-                        // Construct a readable location string
                         const parts = [p.name, p.city, p.state, p.country].filter(Boolean);
-                        return [...new Set(parts)].join(", "); // Remove duplicates and join
+                        return [...new Set(parts)].join(", ");
                     });
-
                     setFilteredCities(formattedCities);
                     setShowSuggestions(true);
                 } catch (error) {
@@ -50,10 +47,35 @@ export function HeroSection() {
             } else {
                 setShowSuggestions(false);
             }
-        }, 300); // 300ms delay for faster feel
-
+        }, 300);
         return () => clearTimeout(delayDebounceFn);
     }, [destination]);
+
+    // Debounced search for Source (Duplicate logic)
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(async () => {
+            if (source.length > 2) {
+                try {
+                    const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(source)}&limit=10`);
+                    if (!response.ok) throw new Error("Network response was not ok");
+                    const data = await response.json();
+                    const formattedCities = data.features.map((feature: any) => {
+                        const p = feature.properties;
+                        const parts = [p.name, p.city, p.state, p.country].filter(Boolean);
+                        return [...new Set(parts)].join(", ");
+                    });
+                    setFilteredSourceCities(formattedCities);
+                    setShowSourceSuggestions(true);
+                } catch (error) {
+                    console.error("Error fetching places:", error);
+                    setFilteredSourceCities([]);
+                }
+            } else {
+                setShowSourceSuggestions(false);
+            }
+        }, 300);
+        return () => clearTimeout(delayDebounceFn);
+    }, [source]);
 
     useEffect(() => {
         if (message) {
@@ -91,6 +113,7 @@ export function HeroSection() {
                 },
                 body: JSON.stringify({
                     destination,
+                    source,
                     days,
                     budget,
                     travelers,
@@ -167,39 +190,62 @@ export function HeroSection() {
                     Discover the best budget-friendly itineraries.
                 </p>
 
-                {/* Trip Planner Widget */}
-                <div className="relative z-30 bg-white/80 dark:bg-black/60 backdrop-blur-md p-2 rounded-2xl shadow-xl w-full max-w-4xl border border-white/20">
+                <div className="relative z-30 bg-white/80 dark:bg-black/60 backdrop-blur-md p-2 rounded-2xl shadow-xl w-full max-w-5xl border border-white/20">
+
+                    {/* Disclaimer - Moved to Top */}
+                    <div className="mb-3 flex items-center justify-center md:justify-start gap-2 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-lg w-full">
+                        <span>⚠️</span>
+                        <span>Travel costs are estimated. Actual prices may vary based on season & availability.</span>
+                    </div>
+
                     <div className="flex flex-col md:flex-row gap-2">
-
-                        {/* Budget Input */}
-                        <div className="flex-1 bg-white dark:bg-slate-900 rounded-xl px-4 py-3 text-left border border-transparent focus-within:border-orange-500 transition-colors relative">
+                        {/* Source Input */}
+                        <div className="flex-[1.5] bg-white dark:bg-slate-900 rounded-xl px-4 py-3 text-left border border-transparent focus-within:border-orange-500 transition-colors relative z-40">
                             <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                                Your Budget
+                                From (City)
                             </label>
-                            <div className="flex items-center">
-                                <span className="text-lg font-bold text-slate-900 dark:text-white mr-1">₹</span>
+                            <div className="relative flex items-center">
+                                <MapPin className="absolute left-0 h-5 w-5 text-slate-400" />
                                 <input
-                                    type="number"
-                                    placeholder="5000"
-                                    value={budget}
-                                    onChange={(e) => setBudget(e.target.value)}
-                                    className="w-full bg-transparent text-lg font-bold text-slate-900 dark:text-white outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                                    type="text"
+                                    placeholder="Starting city..."
+                                    className="w-full bg-transparent text-lg font-bold text-slate-900 dark:text-white outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700 pl-7"
+                                    value={source}
+                                    onChange={(e) => setSource(e.target.value)}
+                                    onBlur={() => setTimeout(() => setShowSourceSuggestions(false), 200)}
                                 />
+                                {showSourceSuggestions && filteredSourceCities.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 mt-4 bg-white dark:bg-zinc-900 rounded-xl shadow-2xl border border-slate-100 dark:border-zinc-800 max-h-60 overflow-y-auto custom-scrollbar z-50 overflow-hidden">
+                                        {filteredSourceCities.map((city, index) => {
+                                            const parts = city.split(', ');
+                                            const mainName = parts[0];
+                                            const subText = parts.slice(1).join(', ');
+                                            return (
+                                                <div
+                                                    key={index}
+                                                    className="px-4 py-3 hover:bg-orange-50 dark:hover:bg-zinc-800 cursor-pointer flex items-center gap-2 group transition-colors border-b border-slate-50 dark:border-zinc-800/50 last:border-0"
+                                                    onClick={() => {
+                                                        setSource(mainName);
+                                                        setShowSourceSuggestions(false);
+                                                    }}
+                                                >
+                                                    <div className="bg-slate-100 dark:bg-zinc-800 p-2 rounded-full group-hover:bg-orange-100 dark:group-hover:bg-orange-900/30 transition-colors shrink-0">
+                                                        <MapPin className="h-4 w-4 text-slate-400 group-hover:text-orange-500 transition-colors" />
+                                                    </div>
+                                                    <div className="flex flex-col overflow-hidden">
+                                                        <span className="font-semibold text-slate-800 dark:text-slate-200 group-hover:text-orange-600 dark:group-hover:text-orange-400 truncate">
+                                                            {mainName}
+                                                        </span>
+                                                        {subText && (
+                                                            <span className="text-xs text-slate-400 dark:text-slate-500 truncate">{subText}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
-                        </div>
-
-                        {/* Days Input */}
-                        <div className="w-full md:w-32 bg-white dark:bg-slate-900 rounded-xl px-4 py-3 text-left border border-transparent focus-within:border-orange-500 transition-colors relative">
-                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                                Days
-                            </label>
-                            <input
-                                type="number"
-                                placeholder="3"
-                                value={days}
-                                onChange={(e) => setDays(e.target.value)}
-                                className="w-full bg-transparent text-lg font-bold text-slate-900 dark:text-white outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700"
-                            />
                         </div>
 
                         {/* Destination Input */}
@@ -258,15 +304,46 @@ export function HeroSection() {
                             </div>
                         </div>
 
-                        {/* Action Button */}
-                        <button
-                            onClick={handlePlanTrip}
-                            disabled={loading}
-                            className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-lg px-8 py-3 rounded-xl shadow-lg transform hover:scale-[1.02] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center min-w-[160px]"
-                        >
-                            {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Plan My Trip"}
-                        </button>
+                        {/* Days Input */}
+                        <div className="w-full md:w-32 bg-white dark:bg-slate-900 rounded-xl px-4 py-3 text-left border border-transparent focus-within:border-orange-500 transition-colors relative">
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                                Days
+                            </label>
+                            <input
+                                type="number"
+                                placeholder="3"
+                                value={days}
+                                onChange={(e) => setDays(e.target.value)}
+                                className="w-full bg-transparent text-lg font-bold text-slate-900 dark:text-white outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                            />
+                        </div>
+
+                        {/* Budget Input */}
+                        <div className="flex-1 bg-white dark:bg-slate-900 rounded-xl px-4 py-3 text-left border border-transparent focus-within:border-orange-500 transition-colors relative">
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                                Your Budget
+                            </label>
+                            <div className="flex items-center">
+                                <span className="text-lg font-bold text-slate-900 dark:text-white mr-1">₹</span>
+                                <input
+                                    type="number"
+                                    placeholder="5000"
+                                    value={budget}
+                                    onChange={(e) => setBudget(e.target.value)}
+                                    className="w-full bg-transparent text-lg font-bold text-slate-900 dark:text-white outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                                />
+                            </div>
+                        </div>
                     </div>
+
+                    {/* Action Button */}
+                    <button
+                        onClick={handlePlanTrip}
+                        disabled={loading}
+                        className="mt-4 w-full md:w-auto md:ml-auto bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-lg px-8 py-3 rounded-xl shadow-lg transform hover:scale-[1.02] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center min-w-[160px]"
+                    >
+                        {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Plan My Trip"}
+                    </button>
                 </div>
 
                 {/* Toast Notification */}
@@ -303,6 +380,6 @@ export function HeroSection() {
 
             {/* Decorative Wave Bottom (Optional aesthetic touch) */}
             <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent dark:from-black dark:to-transparent z-10" />
-        </div>
+        </div >
     );
 }

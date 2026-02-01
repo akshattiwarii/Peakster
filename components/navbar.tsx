@@ -70,6 +70,8 @@ export function Navbar() {
         // 1. Get initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
             fetchUserData(session);
+        }).catch((error) => {
+            console.error("Session check error", error);
         });
 
         // 2. Listen for changes
@@ -81,7 +83,7 @@ export function Navbar() {
             // Refresh current user data when credit update event fires
             supabase.auth.getSession().then(({ data: { session } }) => {
                 fetchUserData(session);
-            });
+            }).catch(console.error);
         };
 
         window.addEventListener('credits-updated', handleCreditUpdate);

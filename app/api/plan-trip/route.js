@@ -20,7 +20,7 @@ export async function POST(req) {
         }
     );
     try {
-        const { destination, days, budget, travelers, userId } = await req.json();
+        const { destination, source, days, budget, travelers, userId } = await req.json();
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized: User ID missing" }, { status: 401 });
@@ -61,7 +61,7 @@ export async function POST(req) {
         const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
         const prompt = `You are a budget travel planner. Create a trip plan for:
-- Destination: ${destination}
+- User is traveling from ${source} to ${destination}
 - Duration: ${days} days
 - Budget: ₹${budget} (Indian Rupees)
 - Travelers: ${travelers}
@@ -79,6 +79,10 @@ REQUIRED SECTIONS (in this exact order):
 - What type of traveler is this best for?
 - Key highlights
 
+## 🚌 Getting There (${source} ➔ ${destination})
+- Best Intercity Options (Train/Bus/Shared Cab) with approx costs
+- Travel duration advice
+
 ## 🟢 Quick Summary
 (2-3 lines max describing the trip)
 
@@ -87,6 +91,7 @@ REQUIRED SECTIONS (in this exact order):
 - 🏨 Stay: ₹XXX–XXX
 - 🍴 Food: ₹XXX–XXX
 - 🚕 Local travel: ₹XXX–XXX
+- 🚌 Intercity travel: ₹XXX–XXX
 - 🎫 Entry fees: ₹XXX (if any)
 - 💵 Total: ₹XXX
 
