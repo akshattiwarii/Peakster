@@ -9,7 +9,7 @@ export function PartnersSection() {
     ];
 
     return (
-        <div className="relative z-10 bg-white dark:bg-black py-16 -mt-10">
+        <div className="relative z-20 bg-white dark:bg-black py-16 -mt-10">
             <div className="container mx-auto px-4 text-center">
                 <p className="text-slate-500 font-medium mb-8 dark:text-slate-400">
                     We find the best <span className="text-black font-bold dark:text-white">deals</span> from the top travel brands.

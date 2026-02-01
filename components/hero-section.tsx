@@ -8,9 +8,12 @@ import ReactMarkdown from "react-markdown";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+// CITIES array removed as we are now using global search
 export function HeroSection() {
     const [loading, setLoading] = useState(false);
     const [destination, setDestination] = useState("");
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [filteredCities, setFilteredCities] = useState<string[]>([]);
     const [days, setDays] = useState("");
     const [budget, setBudget] = useState("");
     const [travelers, setTravelers] = useState("Couple");
@@ -18,6 +21,39 @@ export function HeroSection() {
     const [tripId, setTripId] = useState<string | null>(null);
     const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
     const router = useRouter();
+
+    // Debounced search for global places
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(async () => {
+            if (destination.length > 2) {
+                try {
+                    // Using Photon API for better autocomplete and POI support
+                    const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(destination)}&limit=10`);
+                    if (!response.ok) throw new Error("Network response was not ok");
+
+                    const data = await response.json();
+
+                    // Photon returns GeoJSON features
+                    const formattedCities = data.features.map((feature: any) => {
+                        const p = feature.properties;
+                        // Construct a readable location string
+                        const parts = [p.name, p.city, p.state, p.country].filter(Boolean);
+                        return [...new Set(parts)].join(", "); // Remove duplicates and join
+                    });
+
+                    setFilteredCities(formattedCities);
+                    setShowSuggestions(true);
+                } catch (error) {
+                    console.error("Error fetching places:", error);
+                    setFilteredCities([]);
+                }
+            } else {
+                setShowSuggestions(false);
+            }
+        }, 300); // 300ms delay for faster feel
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [destination]);
 
     useEffect(() => {
         if (message) {
@@ -35,11 +71,6 @@ export function HeroSection() {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
             router.push("/auth");
-            return;
-        }
-
-        if (!budget || !destination || !days) {
-            setMessage({ text: "Please fill in all details!", type: "error" });
             return;
         }
 
@@ -115,7 +146,7 @@ export function HeroSection() {
     };
 
     return (
-        <div className="relative w-full min-h-screen flex flex-col items-center justify-center pb-20">
+        <div className="relative z-20 w-full min-h-screen flex flex-col items-center justify-center pb-20">
             {/* Background Image */}
             <div
                 className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat fixed"
@@ -137,7 +168,7 @@ export function HeroSection() {
                 </p>
 
                 {/* Trip Planner Widget */}
-                <div className="bg-white/80 dark:bg-black/60 backdrop-blur-md p-2 rounded-2xl shadow-xl w-full max-w-4xl border border-white/20">
+                <div className="relative z-30 bg-white/80 dark:bg-black/60 backdrop-blur-md p-2 rounded-2xl shadow-xl w-full max-w-4xl border border-white/20">
                     <div className="flex flex-col md:flex-row gap-2">
 
                         {/* Budget Input */}
@@ -172,74 +203,58 @@ export function HeroSection() {
                         </div>
 
                         {/* Destination Input */}
-                        <div className="flex-[1.5] bg-white dark:bg-slate-900 rounded-xl px-4 py-3 text-left border border-transparent focus-within:border-orange-500 transition-colors relative">
+                        <div className="flex-[1.5] bg-white dark:bg-slate-900 rounded-xl px-4 py-3 text-left border border-transparent focus-within:border-orange-500 transition-colors relative z-50">
                             <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
                                 Destination
                             </label>
                             <div className="relative flex items-center">
-                                <select
-                                    className="w-full bg-transparent text-lg font-bold text-slate-900 dark:text-white outline-none appearance-none cursor-pointer z-10"
+                                <MapPin className="absolute left-0 h-5 w-5 text-orange-500" />
+                                <input
+                                    type="text"
+                                    placeholder="Search any place in the world..."
+                                    className="w-full bg-transparent text-lg font-bold text-slate-900 dark:text-white outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700 pl-7"
                                     value={destination}
-                                    onChange={(e) => setDestination(e.target.value)}
-                                >
-                                    <option value="" disabled className="text-black bg-white">Select a place</option>
-                                    <option value="Agra" className="text-black bg-white">Agra</option>
-                                    <option value="Ahmedabad" className="text-black bg-white">Ahmedabad</option>
-                                    <option value="Alleppey" className="text-black bg-white">Alleppey</option>
-                                    <option value="Amritsar" className="text-black bg-white">Amritsar</option>
-                                    <option value="Andaman & Nicobar" className="text-black bg-white">Andaman & Nicobar</option>
-                                    <option value="Auli" className="text-black bg-white">Auli</option>
-                                    <option value="Bangalore" className="text-black bg-white">Bangalore</option>
-                                    <option value="Chandigarh" className="text-black bg-white">Chandigarh</option>
-                                    <option value="Chennai" className="text-black bg-white">Chennai</option>
-                                    <option value="Coorg" className="text-black bg-white">Coorg</option>
-                                    <option value="Dalhousie" className="text-black bg-white">Dalhousie</option>
-                                    <option value="Darjeeling" className="text-black bg-white">Darjeeling</option>
-                                    <option value="Delhi" className="text-black bg-white">Delhi</option>
-                                    <option value="Dharamshala" className="text-black bg-white">Dharamshala</option>
-                                    <option value="Gangtok" className="text-black bg-white">Gangtok</option>
-                                    <option value="Goa" className="text-black bg-white">Goa</option>
-                                    <option value="Gokarna" className="text-black bg-white">Gokarna</option>
-                                    <option value="Gulmarg" className="text-black bg-white">Gulmarg</option>
-                                    <option value="Hampi" className="text-black bg-white">Hampi</option>
-                                    <option value="Haridwar" className="text-black bg-white">Haridwar</option>
-                                    <option value="Hyderabad" className="text-black bg-white">Hyderabad</option>
-                                    <option value="Jaipur" className="text-black bg-white">Jaipur</option>
-                                    <option value="Jaisalmer" className="text-black bg-white">Jaisalmer</option>
-                                    <option value="Jodhpur" className="text-black bg-white">Jodhpur</option>
-                                    <option value="Kasol" className="text-black bg-white">Kasol</option>
-                                    <option value="Kerala" className="text-black bg-white">Kerala</option>
-                                    <option value="Kochi" className="text-black bg-white">Kochi</option>
-                                    <option value="Kodaikanal" className="text-black bg-white">Kodaikanal</option>
-                                    <option value="Kolkata" className="text-black bg-white">Kolkata</option>
-                                    <option value="Ladakh" className="text-black bg-white">Ladakh</option>
-                                    <option value="Lakshadweep" className="text-black bg-white">Lakshadweep</option>
-                                    <option value="Leh" className="text-black bg-white">Leh</option>
-                                    <option value="Lonavala" className="text-black bg-white">Lonavala</option>
-                                    <option value="Madurai" className="text-black bg-white">Madurai</option>
-                                    <option value="Manali" className="text-black bg-white">Manali</option>
-                                    <option value="McLeod Ganj" className="text-black bg-white">McLeod Ganj</option>
-                                    <option value="Mount Abu" className="text-black bg-white">Mount Abu</option>
-                                    <option value="Mumbai" className="text-black bg-white">Mumbai</option>
-                                    <option value="Munnar" className="text-black bg-white">Munnar</option>
-                                    <option value="Mussoorie" className="text-black bg-white">Mussoorie</option>
-                                    <option value="Mysore" className="text-black bg-white">Mysore</option>
-                                    <option value="Nainital" className="text-black bg-white">Nainital</option>
-                                    <option value="Ooty" className="text-black bg-white">Ooty</option>
-                                    <option value="Pondicherry" className="text-black bg-white">Pondicherry</option>
-                                    <option value="Pune" className="text-black bg-white">Pune</option>
-                                    <option value="Puri" className="text-black bg-white">Puri</option>
-                                    <option value="Pushkar" className="text-black bg-white">Pushkar</option>
-                                    <option value="Rishikesh" className="text-black bg-white">Rishikesh</option>
-                                    <option value="Shimla" className="text-black bg-white">Shimla</option>
-                                    <option value="Srinagar" className="text-black bg-white">Srinagar</option>
-                                    <option value="Tirupati" className="text-black bg-white">Tirupati</option>
-                                    <option value="Udaipur" className="text-black bg-white">Udaipur</option>
-                                    <option value="Varanasi" className="text-black bg-white">Varanasi</option>
-                                    <option value="Varkala" className="text-black bg-white">Varkala</option>
-                                    <option value="Wayanad" className="text-black bg-white">Wayanad</option>
-                                </select>
-                                <ChevronDown className="absolute right-0 h-5 w-5 text-slate-400 pointer-events-none" />
+                                    onChange={(e) => {
+                                        setDestination(e.target.value);
+                                    }}
+                                    onBlur={() => {
+                                        setTimeout(() => setShowSuggestions(false), 200);
+                                    }}
+                                />
+                                {showSuggestions && filteredCities.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 mt-4 bg-white dark:bg-zinc-900 rounded-xl shadow-2xl border border-slate-100 dark:border-zinc-800 max-h-60 overflow-y-auto custom-scrollbar z-50 overflow-hidden">
+                                        {filteredCities.map((city, index) => {
+                                            const parts = city.split(', ');
+                                            const mainName = parts[0];
+                                            const subText = parts.slice(1).join(', ');
+
+                                            return (
+                                                <div
+                                                    key={index}
+                                                    className="px-4 py-3 hover:bg-orange-50 dark:hover:bg-zinc-800 cursor-pointer flex items-center gap-2 group transition-colors border-b border-slate-50 dark:border-zinc-800/50 last:border-0"
+                                                    onClick={() => {
+                                                        setDestination(mainName);
+                                                        setShowSuggestions(false);
+                                                    }}
+                                                >
+                                                    <div className="bg-slate-100 dark:bg-zinc-800 p-2 rounded-full group-hover:bg-orange-100 dark:group-hover:bg-orange-900/30 transition-colors shrink-0">
+                                                        <MapPin className="h-4 w-4 text-slate-400 group-hover:text-orange-500 transition-colors" />
+                                                    </div>
+                                                    <div className="flex flex-col overflow-hidden">
+                                                        <span className="font-semibold text-slate-800 dark:text-slate-200 group-hover:text-orange-600 dark:group-hover:text-orange-400 truncate">
+                                                            {mainName}
+                                                        </span>
+                                                        {subText && (
+                                                            <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                                                                {subText}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -264,7 +279,7 @@ export function HeroSection() {
 
                 {/* Plan Result */}
                 {result && (
-                    <div className="mt-10 bg-white/90 dark:bg-black/80 backdrop-blur-md p-8 rounded-2xl shadow-xl w-full max-w-4xl border border-white/20 text-left animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="relative z-10 mt-10 bg-white/90 dark:bg-black/80 backdrop-blur-md p-8 rounded-2xl shadow-xl w-full max-w-4xl border border-white/20 text-left animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <h2 className="text-2xl font-bold mb-4 text-slate-900 dark:text-white">Your Trip Plan</h2>
                         <div className="prose dark:prose-invert max-w-none text-slate-800 dark:text-slate-300">
                             <ReactMarkdown

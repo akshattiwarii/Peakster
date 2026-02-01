@@ -181,7 +181,7 @@ export default function HowItWorks() {
                                     </table>
                                 </div>
                                 <p className="mt-4 text-sm text-slate-500 dark:text-slate-400 text-center">
-                                    More credit options coming soon 👀
+                                    Credits refill in 24 hours ⏳
                                 </p>
                             </div>
 
